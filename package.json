@@ -1,12 +1,16 @@
 {
   "name": "bookmark-deck",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:extension": "vite build --config vite.config.extension.js",
+    "dev:extension": "vite build --config vite.config.extension.js --watch",
+    "generate-icons": "node scripts/generate-icons.js",
+    "pack:extension": "npm run build:extension && cd extension && zip -r ../bookmark-deck-extension.zip . -x '*.DS_Store' -x 'icons/icon.svg'"
   },
   "dependencies": {
     "pinia": "^3.0.4",
@@ -15,6 +19,7 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.18",
     "@vitejs/plugin-vue": "^6.0.1",
+    "sharp": "^0.34.5",
     "tailwindcss": "^4.1.18",
     "vite": "^7.2.4"
   }

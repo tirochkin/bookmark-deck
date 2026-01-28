@@ -1,0 +1,27 @@
+/* Extension-specific styles for overlay mode */
+
+html, body, #app {
+  background: transparent;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Override min-height for overlay mode */
+.extension-overlay {
+  min-height: auto !important;
+  height: 100vh;
+  background: var(--color-bg-primary);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+/* Compact header for overlay */
+.extension-overlay .header-compact {
+  padding: 0.75rem 1.5rem;
+}
+
+/* Ensure modals stay within the overlay */
+.extension-overlay .modal-container {
+  position: absolute;
+}
