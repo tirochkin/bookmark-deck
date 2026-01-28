@@ -34,6 +34,63 @@ function isChromeExtension() {
 }
 
 /**
+ * Convert object with numeric keys back to array
+ * Fixes data corrupted by chrome.storage serialization of Vue Proxy
+ */
+function objectToArray(obj) {
+  if (Array.isArray(obj)) return obj
+  if (!obj || typeof obj !== 'object') return []
+
+  const keys = Object.keys(obj)
+  if (keys.length === 0) return []
+
+  // Check if all keys are numeric
+  const isNumericKeys = keys.every(k => /^\d+$/.test(k))
+  if (!isNumericKeys) return obj
+
+  // Convert to array
+  return keys.sort((a, b) => Number(a) - Number(b)).map(k => obj[k])
+}
+
+/**
+ * Repair data structure corrupted by chrome.storage serialization
+ */
+function repairData(data) {
+  if (!data || typeof data !== 'object') return data
+
+  // Repair tabs array
+  if (data.tabs && !Array.isArray(data.tabs)) {
+    data.tabs = objectToArray(data.tabs)
+  }
+
+  // Repair blocks in each tab
+  if (Array.isArray(data.tabs)) {
+    data.tabs.forEach(tab => {
+      if (tab.blocks && !Array.isArray(tab.blocks)) {
+        tab.blocks = objectToArray(tab.blocks)
+      }
+    })
+  }
+
+  // Repair buffer
+  if (data.buffer && !Array.isArray(data.buffer)) {
+    data.buffer = objectToArray(data.buffer)
+  }
+
+  // Repair trash
+  if (data.trash) {
+    if (data.trash.blocks && !Array.isArray(data.trash.blocks)) {
+      data.trash.blocks = objectToArray(data.trash.blocks)
+    }
+    if (data.trash.tabs && !Array.isArray(data.trash.tabs)) {
+      data.trash.tabs = objectToArray(data.trash.tabs)
+    }
+  }
+
+  return data
+}
+
+/**
  * Composable for Chrome extension storage operations with debounce
  * Uses chrome.storage.local instead of localStorage
  */
@@ -45,6 +102,10 @@ export function useExtensionStorage() {
    * @returns {Promise<object>} Valid data or initial data on error
    */
   async function load() {
+    console.log('[ExtensionStorage] load() called')
+    console.log('[ExtensionStorage] isChromeExtension:', isChromeExtension())
+    console.log('[ExtensionStorage] chrome:', typeof chrome, chrome?.storage ? 'has storage' : 'no storage')
+
     if (!isChromeExtension()) {
       console.warn('[ExtensionStorage] Not in extension context, using initial data')
       return createInitialData()
@@ -52,6 +113,7 @@ export function useExtensionStorage() {
 
     try {
       const result = await chrome.storage.local.get(STORAGE_KEY)
+      console.log('[ExtensionStorage] Raw result from storage:', result)
       const data = result[STORAGE_KEY]
 
       if (!data) {
@@ -59,16 +121,23 @@ export function useExtensionStorage() {
         return createInitialData()
       }
 
-      const validation = validateData(data)
+      console.log('[ExtensionStorage] Raw data from storage:', data)
+
+      // Repair data structure if corrupted by chrome.storage serialization
+      const repairedData = repairData(data)
+      console.log('[ExtensionStorage] Repaired data, tabs count:', repairedData.tabs?.length)
+
+      const validation = validateData(repairedData)
 
       if (!validation.valid) {
         console.warn('[ExtensionStorage] Invalid data:', validation.error)
+        console.warn('[ExtensionStorage] Data that failed validation:', JSON.stringify(repairedData, null, 2))
         console.warn('[ExtensionStorage] Falling back to initial state')
         return createInitialData()
       }
 
-      console.log('[ExtensionStorage] Data loaded successfully')
-      return data
+      console.log('[ExtensionStorage] Data loaded successfully, tabs:', repairedData.tabs?.length)
+      return repairedData
     } catch (error) {
       console.error('[ExtensionStorage] Failed to load data:', error)
       return createInitialData()
@@ -81,21 +150,27 @@ export function useExtensionStorage() {
    * @returns {Promise<boolean>} Success status
    */
   async function saveImmediate(data) {
+    console.log('[ExtensionStorage] saveImmediate() called, tabs:', data?.tabs?.length)
+
     if (!isChromeExtension()) {
       console.warn('[ExtensionStorage] Not in extension context, cannot save')
       return false
     }
 
     try {
-      const validation = validateData(data)
+      // Deep clone to remove Vue Proxy and ensure proper array serialization
+      const plainData = JSON.parse(JSON.stringify(data))
+
+      const validation = validateData(plainData)
 
       if (!validation.valid) {
         console.error('[ExtensionStorage] Cannot save invalid data:', validation.error)
+        console.error('[ExtensionStorage] Data that failed:', JSON.stringify(plainData, null, 2))
         return false
       }
 
-      await chrome.storage.local.set({ [STORAGE_KEY]: data })
-      console.log('[ExtensionStorage] Data saved')
+      await chrome.storage.local.set({ [STORAGE_KEY]: plainData })
+      console.log('[ExtensionStorage] Data saved successfully, tabs:', plainData.tabs?.length)
       return true
     } catch (error) {
       console.error('[ExtensionStorage] Failed to save data:', error)

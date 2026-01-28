@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, onBeforeUnmount, ref, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import AppHeader from '@/components/layout/AppHeader.vue'
 import AppFooter from '@/components/layout/AppFooter.vue'
@@ -76,6 +76,26 @@ onMounted(async () => {
   // Async init for extension store
   await store.init()
   isLoading.value = false
+
+  // Ensure data is saved before page unload
+  window.addEventListener('beforeunload', handleBeforeUnload)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+})
+
+// Force save on page close/hide to prevent data loss from debounce
+function handleBeforeUnload() {
+  store.flushPendingSaves()
+}
+
+function handleVisibilityChange() {
+  if (document.visibilityState === 'hidden') {
+    store.flushPendingSaves()
+  }
+}
+
+onBeforeUnmount(() => {
+  window.removeEventListener('beforeunload', handleBeforeUnload)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 
 function handleCellClick(position) {

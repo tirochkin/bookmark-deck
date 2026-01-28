@@ -79,6 +79,8 @@ function sendToParent(action, data = {}) {
 
 // Extension-specific: Close overlay
 function closeOverlay() {
+  // Flush pending saves before closing
+  store.flushPendingSaves()
   sendToParent('close-overlay')
 }
 
@@ -102,8 +104,21 @@ function handleParentMessage(event) {
   }
 }
 
+// Force save on visibility change to prevent data loss from debounce
+function handleVisibilityChange() {
+  if (document.visibilityState === 'hidden') {
+    store.flushPendingSaves()
+  }
+}
+
+function handleBeforeUnload() {
+  store.flushPendingSaves()
+}
+
 onMounted(async () => {
   window.addEventListener('message', handleParentMessage)
+  window.addEventListener('beforeunload', handleBeforeUnload)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 
   // Async init for extension store
   await store.init()
@@ -111,7 +126,11 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  // Flush any pending saves before unmount
+  store.flushPendingSaves()
   window.removeEventListener('message', handleParentMessage)
+  window.removeEventListener('beforeunload', handleBeforeUnload)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 
 function handleCellClick(position) {

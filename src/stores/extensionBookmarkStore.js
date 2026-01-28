@@ -40,14 +40,23 @@ export const useExtensionBookmarkStore = defineStore('extensionBookmarks', () =>
   const trashTabCount = computed(() => trash.value.tabs.length)
 
   // Private helpers
-  function persistData() {
-    const data = {
+  function getDataSnapshot() {
+    return {
       version: getDataVersion(),
       tabs: tabs.value,
       buffer: buffer.value,
       trash: trash.value
     }
-    storage.save(data)
+  }
+
+  function persistData() {
+    storage.save(getDataSnapshot())
+  }
+
+  // Force save immediately (for beforeunload/visibilitychange)
+  async function flushPendingSaves() {
+    if (!isInitialized.value) return
+    await storage.flush(getDataSnapshot())
   }
 
   function generateId() {
@@ -400,6 +409,7 @@ export const useExtensionBookmarkStore = defineStore('extensionBookmarks', () =>
 
     // Actions
     init,
+    flushPendingSaves,
     reset,
     importData,
     setActiveTab,
