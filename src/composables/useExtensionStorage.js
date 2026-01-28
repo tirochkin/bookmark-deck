@@ -102,10 +102,6 @@ export function useExtensionStorage() {
    * @returns {Promise<object>} Valid data or initial data on error
    */
   async function load() {
-    console.log('[ExtensionStorage] load() called')
-    console.log('[ExtensionStorage] isChromeExtension:', isChromeExtension())
-    console.log('[ExtensionStorage] chrome:', typeof chrome, chrome?.storage ? 'has storage' : 'no storage')
-
     if (!isChromeExtension()) {
       console.warn('[ExtensionStorage] Not in extension context, using initial data')
       return createInitialData()
@@ -113,30 +109,21 @@ export function useExtensionStorage() {
 
     try {
       const result = await chrome.storage.local.get(STORAGE_KEY)
-      console.log('[ExtensionStorage] Raw result from storage:', result)
       const data = result[STORAGE_KEY]
 
       if (!data) {
-        console.log('[ExtensionStorage] No saved data, using initial state')
         return createInitialData()
       }
 
-      console.log('[ExtensionStorage] Raw data from storage:', data)
-
       // Repair data structure if corrupted by chrome.storage serialization
       const repairedData = repairData(data)
-      console.log('[ExtensionStorage] Repaired data, tabs count:', repairedData.tabs?.length)
-
       const validation = validateData(repairedData)
 
       if (!validation.valid) {
         console.warn('[ExtensionStorage] Invalid data:', validation.error)
-        console.warn('[ExtensionStorage] Data that failed validation:', JSON.stringify(repairedData, null, 2))
-        console.warn('[ExtensionStorage] Falling back to initial state')
         return createInitialData()
       }
 
-      console.log('[ExtensionStorage] Data loaded successfully, tabs:', repairedData.tabs?.length)
       return repairedData
     } catch (error) {
       console.error('[ExtensionStorage] Failed to load data:', error)
@@ -150,8 +137,6 @@ export function useExtensionStorage() {
    * @returns {Promise<boolean>} Success status
    */
   async function saveImmediate(data) {
-    console.log('[ExtensionStorage] saveImmediate() called, tabs:', data?.tabs?.length)
-
     if (!isChromeExtension()) {
       console.warn('[ExtensionStorage] Not in extension context, cannot save')
       return false
@@ -165,12 +150,10 @@ export function useExtensionStorage() {
 
       if (!validation.valid) {
         console.error('[ExtensionStorage] Cannot save invalid data:', validation.error)
-        console.error('[ExtensionStorage] Data that failed:', JSON.stringify(plainData, null, 2))
         return false
       }
 
       await chrome.storage.local.set({ [STORAGE_KEY]: plainData })
-      console.log('[ExtensionStorage] Data saved successfully, tabs:', plainData.tabs?.length)
       return true
     } catch (error) {
       console.error('[ExtensionStorage] Failed to save data:', error)
