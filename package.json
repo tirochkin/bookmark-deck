@@ -10,7 +10,7 @@
     "build:extension": "vite build --config vite.config.extension.js",
     "dev:extension": "vite build --config vite.config.extension.js --watch",
     "generate-icons": "node scripts/generate-icons.js",
-    "pack:extension": "npm run build:extension && cd extension && zip -r ../bookmark-deck-extension.zip . -x '*.DS_Store' -x 'icons/icon.svg'"
+    "pack:extension": "npm run build:extension && cd extension && zip -r ../artifacts/bookmark-deck-extension.zip . -x '*.DS_Store' -x 'icons/icon.svg'"
   },
   "dependencies": {
     "pinia": "^3.0.4",

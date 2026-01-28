@@ -15,6 +15,7 @@ export default defineConfig({
   build: {
     outDir: 'extension/assets',
     emptyOutDir: true,
+    cssCodeSplit: false,
     rollupOptions: {
       input: {
         extension: resolve(__dirname, 'src/extension/main.js'),
@@ -23,7 +24,13 @@ export default defineConfig({
       output: {
         entryFileNames: '[name].js',
         chunkFileNames: 'shared-[name].js',
-        assetFileNames: '[name].[ext]'
+        assetFileNames: (assetInfo) => {
+          // Use stable name for CSS files
+          if (assetInfo.name && assetInfo.name.endsWith('.css')) {
+            return 'styles.css'
+          }
+          return '[name].[ext]'
+        }
       }
     }
   }
