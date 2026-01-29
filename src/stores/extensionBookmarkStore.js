@@ -71,8 +71,20 @@ export const useExtensionBookmarkStore = defineStore('extensionBookmarks', () =>
     tabs.value = data.tabs
     buffer.value = data.buffer
     trash.value = data.trash
-    activeTabId.value = data.tabs[0]?.id || null
+
+    // Try to restore last active tab, fallback to first tab
+    const lastTabId = await storage.loadLastActiveTab()
+    const tabExists = lastTabId && tabs.value.some(t => t.id === lastTabId)
+    activeTabId.value = tabExists ? lastTabId : (data.tabs[0]?.id || null)
+
     isInitialized.value = true
+  }
+
+  // Save current tab as last active (called on URL open/copy)
+  async function rememberActiveTab() {
+    if (activeTabId.value) {
+      await storage.saveLastActiveTab(activeTabId.value)
+    }
   }
 
   async function reset() {
@@ -410,6 +422,7 @@ export const useExtensionBookmarkStore = defineStore('extensionBookmarks', () =>
     // Actions
     init,
     flushPendingSaves,
+    rememberActiveTab,
     reset,
     importData,
     setActiveTab,

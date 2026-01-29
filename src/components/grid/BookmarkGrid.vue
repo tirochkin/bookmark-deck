@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, inject } from 'vue'
 import BookmarkCell from './BookmarkCell.vue'
 import ContextMenu from '@/components/ui/ContextMenu.vue'
 import { useBookmarkStore } from '@/stores/bookmarkStore.js'
@@ -7,7 +7,7 @@ import { useDragDrop } from '@/composables/useDragDrop.js'
 import { useClipboard } from '@/composables/useClipboard.js'
 
 const COLS = 8
-const ROWS = 5
+const ROWS = 4
 
 const props = defineProps({
   blocks: {
@@ -26,7 +26,8 @@ const props = defineProps({
 
 const emit = defineEmits(['cell-click', 'block-click', 'move-to-buffer', 'move-to-trash', 'url-copied'])
 
-const store = useBookmarkStore()
+// Use injected store (from extension) or fallback to regular store
+const store = inject('bookmarkStore', useBookmarkStore())
 const { draggedFromBuffer, draggedFromTabId, draggedFromTrash, draggedTrashIndex } = useDragDrop()
 const { copy, cut, getClipboard, clearAfterPaste } = useClipboard()
 

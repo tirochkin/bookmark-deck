@@ -1,6 +1,7 @@
 import { validateData, getDataVersion } from '@/utils/validators.js'
 
 const STORAGE_KEY = 'bookmarkDeck'
+const LAST_TAB_KEY = 'bookmarkDeck_lastActiveTab'
 const DEBOUNCE_DELAY = 400
 
 /**
@@ -213,12 +214,44 @@ export function useExtensionStorage() {
     return await saveImmediate(data)
   }
 
+  /**
+   * Save last active tab ID (for remembering tab between sessions)
+   * @param {string} tabId
+   */
+  async function saveLastActiveTab(tabId) {
+    if (!isChromeExtension()) return false
+    try {
+      await chrome.storage.local.set({ [LAST_TAB_KEY]: tabId })
+      return true
+    } catch (error) {
+      console.error('[ExtensionStorage] Failed to save last active tab:', error)
+      return false
+    }
+  }
+
+  /**
+   * Load last active tab ID
+   * @returns {Promise<string|null>}
+   */
+  async function loadLastActiveTab() {
+    if (!isChromeExtension()) return null
+    try {
+      const result = await chrome.storage.local.get(LAST_TAB_KEY)
+      return result[LAST_TAB_KEY] || null
+    } catch (error) {
+      console.error('[ExtensionStorage] Failed to load last active tab:', error)
+      return null
+    }
+  }
+
   return {
     load,
     save,
     saveImmediate,
     flush,
     clear,
-    cancelPendingSave
+    cancelPendingSave,
+    saveLastActiveTab,
+    loadLastActiveTab
   }
 }

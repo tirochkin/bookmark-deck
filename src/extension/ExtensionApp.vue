@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref, computed, onUnmounted } from 'vue'
+import { onMounted, ref, computed, onUnmounted, provide } from 'vue'
 import { storeToRefs } from 'pinia'
 import AppHeader from '@/components/layout/AppHeader.vue'
 import AppFooter from '@/components/layout/AppFooter.vue'
@@ -17,6 +17,7 @@ import { useDragDrop } from '@/composables/useDragDrop.js'
 import { useClipboard } from '@/composables/useClipboard.js'
 
 const store = useExtensionBookmarkStore()
+provide('bookmarkStore', store)
 const { activeBlocks, activeTab, activeTabId, sortedTabs, canAddTab, canDeleteTab, buffer, trash, trashBlockCount, trashTabCount, tabs, isInitialized } = storeToRefs(store)
 const { startDragFromBuffer, draggedFromBuffer, draggedFromTrash, draggedTrashIndex } = useDragDrop()
 const { copy: clipboardCopy, cut: clipboardCut } = useClipboard()
@@ -85,12 +86,14 @@ function closeOverlay() {
 }
 
 // Extension-specific: Open URL and close overlay
-function openUrlAndClose(url) {
+async function openUrlAndClose(url) {
+  await store.rememberActiveTab()
   sendToParent('open-url', { url })
 }
 
 // Extension-specific: Copy URL and close overlay
-function copyUrlAndClose(url) {
+async function copyUrlAndClose(url) {
+  await store.rememberActiveTab()
   sendToParent('copy-url', { url })
 }
 
@@ -226,6 +229,7 @@ function handleBlockModalCancel() {
 
 function handleTabSelect(tabId) {
   store.setActiveTab(tabId)
+  store.rememberActiveTab()
 }
 
 function handleTabCreate() {

@@ -23,6 +23,7 @@ function createOverlay() {
 
   iframe = document.createElement('iframe');
   iframe.src = chrome.runtime.getURL('overlay.html');
+  iframe.allow = 'clipboard-read; clipboard-write';
   iframe.style.cssText = `
     width: 90%;
     max-width: 1200px;
@@ -82,10 +83,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Listen for messages from iframe
 window.addEventListener('message', (event) => {
-  if (event.data.action === 'closeOverlay') {
+  const { action, data } = event.data || {};
+  if (action === 'close-overlay') {
     closeOverlay();
-  } else if (event.data.action === 'openUrl') {
+  } else if (action === 'open-url') {
     closeOverlay();
-    chrome.runtime.sendMessage({ action: 'openUrl', url: event.data.url });
+    chrome.runtime.sendMessage({ action: 'openUrl', url: data?.url });
+  } else if (action === 'copy-url') {
+    // URL already copied to clipboard in iframe, just close
+    closeOverlay();
   }
 });

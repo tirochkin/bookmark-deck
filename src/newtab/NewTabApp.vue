@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, onBeforeUnmount, ref, computed } from 'vue'
+import { onMounted, onBeforeUnmount, ref, computed, provide } from 'vue'
 import { storeToRefs } from 'pinia'
 import AppHeader from '@/components/layout/AppHeader.vue'
 import AppFooter from '@/components/layout/AppFooter.vue'
@@ -17,6 +17,7 @@ import { useDragDrop } from '@/composables/useDragDrop.js'
 import { useClipboard } from '@/composables/useClipboard.js'
 
 const store = useExtensionBookmarkStore()
+provide('bookmarkStore', store)
 const { activeBlocks, activeTab, activeTabId, sortedTabs, canAddTab, canDeleteTab, buffer, trash, trashBlockCount, trashTabCount, tabs } = storeToRefs(store)
 const { startDragFromBuffer, draggedFromBuffer } = useDragDrop()
 const { copy: clipboardCopy, cut: clipboardCut } = useClipboard()
@@ -107,10 +108,12 @@ function handleCellClick(position) {
   }
 }
 
-function handleBlockClick(block) {
+async function handleBlockClick(block) {
   if (!isEditMode.value) {
-    // Open URL in new tab (standard behavior for new tab page)
-    window.open(block.url, '_blank')
+    // Remember current tab before opening URL
+    await store.rememberActiveTab()
+    // Open URL in same tab (replacing new tab page)
+    window.location.href = block.url
   } else {
     editingBlock.value = block
     editingPosition.value = block.position
@@ -131,6 +134,7 @@ function handleMoveToTrash({ block, tabId }) {
 }
 
 function handleUrlCopied({ block }) {
+  store.rememberActiveTab()
   showToastNotification(`Ссылка скопирована: ${block.title}`)
 }
 
@@ -183,6 +187,7 @@ function handleBlockModalCancel() {
 
 function handleTabSelect(tabId) {
   store.setActiveTab(tabId)
+  store.rememberActiveTab()
 }
 
 function handleTabCreate() {

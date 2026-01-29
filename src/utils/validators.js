@@ -46,7 +46,7 @@ export function isValidPosition(position) {
   return (
     typeof row === 'number' &&
     typeof col === 'number' &&
-    row >= 0 && row <= 4 &&
+    row >= 0 && row <= 3 &&
     col >= 0 && col <= 7
   )
 }
