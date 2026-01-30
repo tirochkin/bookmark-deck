@@ -37,6 +37,11 @@ function createOverlay() {
   overlay.appendChild(iframe);
   document.body.appendChild(overlay);
 
+  // Focus iframe when it loads
+  iframe.addEventListener('load', () => {
+    iframe.focus();
+  });
+
   // Close on click outside iframe
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) {

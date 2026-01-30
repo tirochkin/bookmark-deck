@@ -21,6 +21,14 @@ const props = defineProps({
   autoEdit: {
     type: Boolean,
     default: false
+  },
+  tabNumber: {
+    type: Number,
+    default: null
+  },
+  showKeyHint: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -110,7 +118,17 @@ function handleDrop(e) {
     @dragend="handleDragEnd"
     @dragover="handleDragOver"
     @drop="handleDrop"
+    :aria-keyshortcuts="tabNumber ? String(tabNumber) : undefined"
   >
+    <!-- Tab number hint -->
+    <span
+      v-if="showKeyHint && tabNumber && !isEditing"
+      class="text-[10px] font-mono opacity-40 mr-1"
+      aria-hidden="true"
+    >
+      {{ tabNumber }}
+    </span>
+
     <!-- Tab name / Edit input -->
     <template v-if="isEditing">
       <input

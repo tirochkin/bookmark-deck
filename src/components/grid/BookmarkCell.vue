@@ -4,6 +4,7 @@ import BookmarkBlock from './BookmarkBlock.vue'
 import { useDragDrop } from '@/composables/useDragDrop.js'
 import { useClipboard } from '@/composables/useClipboard.js'
 import { useModifierKeys } from '@/composables/useModifierKeys.js'
+import { getKeyHint } from '@/composables/useKeyboardNavigation.js'
 
 const props = defineProps({
   block: {
@@ -25,8 +26,27 @@ const props = defineProps({
   tabId: {
     type: String,
     required: true
+  },
+  isHighlighted: {
+    type: Boolean,
+    default: false
+  },
+  isDimmed: {
+    type: Boolean,
+    default: false
+  },
+  showKeyHints: {
+    type: Boolean,
+    default: true
+  },
+  keyHintOpacity: {
+    type: Number,
+    default: 0.4
   }
 })
+
+// Computed key hint for this cell
+const keyHint = computed(() => getKeyHint(props.row, props.col))
 
 const emit = defineEmits(['click', 'block-click', 'drop', 'drop-conflict', 'copy', 'cut', 'paste', 'move-to-buffer', 'move-to-trash', 'url-copied'])
 
@@ -249,7 +269,7 @@ function handleDrop(event) {
 
 <template>
   <div
-    class="bookmark-cell w-[88px] h-[88px] rounded-lg transition-all duration-200"
+    class="bookmark-cell relative w-[88px] h-[88px] rounded-lg transition-all duration-200"
     :class="[
       block
         ? ''
@@ -264,6 +284,9 @@ function handleDrop(event) {
       isCutToClipboard ? 'opacity-50 ring-2 ring-dashed ring-neon-lime' : '',
       // Paste target hint (empty cell with clipboard content)
       !block && editMode && hasClipboard && !isDropTarget ? 'hover:ring-2 hover:ring-neon-lime/50' : '',
+      // Keyboard navigation states (only highlight cells with blocks)
+      isHighlighted && block ? 'ring-2 ring-neon-cyan bg-neon-cyan/10' : '',
+      isDimmed && block ? 'opacity-40' : '',
       // Dynamic cursor based on modifiers
       cursorClass
     ]"
@@ -271,6 +294,7 @@ function handleDrop(event) {
     :tabindex="block || editMode ? 0 : -1"
     :role="block ? 'button' : editMode ? 'button' : 'presentation'"
     :aria-label="block ? block.title : editMode ? `Добавить закладку в строку ${row + 1}, столбец ${col + 1}` : undefined"
+    :aria-keyshortcuts="block ? keyHint : undefined"
     @click="handleClick"
     @keydown="handleKeydown"
     @dragstart="handleDragStart"
@@ -280,6 +304,17 @@ function handleDrop(event) {
     @dragleave="handleDragLeave"
     @drop="handleDrop"
   >
+    <!-- Key hint (only on cells with blocks) -->
+    <span
+      v-if="block && showKeyHints && !editMode"
+      class="absolute top-1 left-1 text-[10px] font-mono leading-none pointer-events-none z-10 transition-opacity duration-200"
+      :class="isHighlighted ? 'text-neon-cyan' : 'text-white'"
+      :style="{ opacity: isHighlighted ? 0.9 : keyHintOpacity }"
+      aria-hidden="true"
+    >
+      {{ keyHint }}
+    </span>
+
     <BookmarkBlock v-if="block" :block="block" :edit-mode="editMode" />
 
     <!-- Plus icon for empty cells in edit mode -->

@@ -15,6 +15,7 @@ import { useExtensionBookmarkStore } from '@/stores/extensionBookmarkStore.js'
 import { useEditMode } from '@/composables/useEditMode.js'
 import { useDragDrop } from '@/composables/useDragDrop.js'
 import { useClipboard } from '@/composables/useClipboard.js'
+import { useKeyboardNavigation } from '@/composables/useKeyboardNavigation.js'
 
 const store = useExtensionBookmarkStore()
 provide('bookmarkStore', store)
@@ -24,8 +25,42 @@ const { copy: clipboardCopy, cut: clipboardCut } = useClipboard()
 
 const { isEditMode } = useEditMode()
 
+// Keyboard navigation
+const {
+  highlightedCells,
+  isBlockSelectionActive,
+  config: keyboardConfig
+} = useKeyboardNavigation({
+  onTabSwitch: (tabIndex) => {
+    // Don't handle if modal is open or in edit mode
+    if (showBlockModal.value || showConfirmModal.value || showImportExportModal.value || showHelpModal.value) return
+    if (isEditMode.value) return
+
+    const tab = sortedTabs.value[tabIndex]
+    if (tab) {
+      store.setActiveTab(tab.id)
+      store.rememberActiveTab()
+    }
+  },
+  onCellSelect: (row, col) => {
+    // Don't handle if modal is open or in edit mode
+    if (showBlockModal.value || showConfirmModal.value || showImportExportModal.value || showHelpModal.value) return
+    if (isEditMode.value) return
+
+    // Find block at position
+    const block = activeBlocks.value.find(b => b.position.row === row && b.position.col === col)
+    if (block) {
+      openUrlAndClose(block.url)
+    }
+  },
+  getTabCount: () => sortedTabs.value.length
+})
+
 // Loading state for async init
 const isLoading = ref(true)
+
+// Container ref for focus management
+const overlayContainer = ref(null)
 
 // Block edit modal state
 const showBlockModal = ref(false)
@@ -126,6 +161,11 @@ onMounted(async () => {
   // Async init for extension store
   await store.init()
   isLoading.value = false
+
+  // Focus container to enable keyboard navigation
+  setTimeout(() => {
+    overlayContainer.value?.focus()
+  }, 50)
 })
 
 onUnmounted(() => {
@@ -365,7 +405,11 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="extension-overlay min-h-screen flex flex-col bg-bg-primary text-text-primary">
+  <div
+    ref="overlayContainer"
+    class="extension-overlay min-h-screen flex flex-col bg-bg-primary text-text-primary"
+    tabindex="-1"
+  >
     <!-- Loading state -->
     <div v-if="isLoading" class="flex-1 flex items-center justify-center">
       <div class="text-text-secondary">Загрузка...</div>
@@ -395,6 +439,7 @@ onUnmounted(() => {
                 :can-delete-tab="canDeleteTab"
                 :edit-mode="isEditMode"
                 :new-tab-id="newlyCreatedTabId"
+                :show-key-hints="keyboardConfig.showKeyHints && !isEditMode"
                 @select="handleTabSelect"
                 @create="handleTabCreate"
                 @update="handleTabUpdate"
@@ -410,6 +455,9 @@ onUnmounted(() => {
               :blocks="activeBlocks"
               :tab-id="activeTab.id"
               :edit-mode="isEditMode"
+              :highlighted-cells="highlightedCells"
+              :show-key-hints="keyboardConfig.showKeyHints && !isEditMode"
+              :key-hint-opacity="keyboardConfig.keyHintOpacity"
               @cell-click="handleCellClick"
               @block-click="handleBlockClick"
               @move-to-buffer="handleMoveToBuffer"

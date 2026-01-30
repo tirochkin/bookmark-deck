@@ -27,6 +27,10 @@ const props = defineProps({
   newTabId: {
     type: String,
     default: null
+  },
+  showKeyHints: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -82,13 +86,15 @@ function handleDrop({ draggedId, targetId }) {
   <div class="tab-bar flex items-end gap-1">
     <!-- Tab items -->
     <TabItem
-      v-for="tab in tabs"
+      v-for="(tab, index) in tabs"
       :key="tab.id"
       :tab="tab"
       :is-active="tab.id === activeTabId"
       :can-delete="canDeleteTab"
       :draggable="editMode"
       :auto-edit="tab.id === newTabId"
+      :tab-number="index + 1"
+      :show-key-hint="showKeyHints && !editMode"
       :class="{
         'opacity-50': draggedTab && draggedTab.id === tab.id,
         'ring-2 ring-neon-cyan/50': dragOverTab && dragOverTab.id === tab.id && draggedTab && draggedTab.id !== tab.id

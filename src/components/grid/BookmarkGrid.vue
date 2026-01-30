@@ -21,8 +21,31 @@ const props = defineProps({
   editMode: {
     type: Boolean,
     default: false
+  },
+  // Keyboard navigation props
+  highlightedCells: {
+    type: Array,
+    default: () => []
+  },
+  showKeyHints: {
+    type: Boolean,
+    default: true
+  },
+  keyHintOpacity: {
+    type: Number,
+    default: 0.4
   }
 })
+
+// Check if a cell is highlighted by keyboard navigation
+function isCellHighlighted(row, col) {
+  return props.highlightedCells.some(cell => cell.row === row && cell.col === col)
+}
+
+// Check if a cell should be dimmed (some cells are highlighted, but not this one)
+function isCellDimmed(row, col) {
+  return props.highlightedCells.length > 0 && !isCellHighlighted(row, col)
+}
 
 const emit = defineEmits(['cell-click', 'block-click', 'move-to-buffer', 'move-to-trash', 'url-copied'])
 
@@ -279,6 +302,10 @@ function handleUrlCopied({ block }) {
       :col="cell.col"
       :tab-id="tabId"
       :edit-mode="editMode"
+      :is-highlighted="isCellHighlighted(cell.row, cell.col)"
+      :is-dimmed="isCellDimmed(cell.row, cell.col)"
+      :show-key-hints="showKeyHints"
+      :key-hint-opacity="keyHintOpacity"
       @click="handleCellClick"
       @block-click="handleBlockClick"
       @drop="handleDrop"

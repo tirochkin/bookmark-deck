@@ -15,6 +15,7 @@ import { useExtensionBookmarkStore } from '@/stores/extensionBookmarkStore.js'
 import { useEditMode } from '@/composables/useEditMode.js'
 import { useDragDrop } from '@/composables/useDragDrop.js'
 import { useClipboard } from '@/composables/useClipboard.js'
+import { useKeyboardNavigation } from '@/composables/useKeyboardNavigation.js'
 
 const store = useExtensionBookmarkStore()
 provide('bookmarkStore', store)
@@ -24,8 +25,43 @@ const { copy: clipboardCopy, cut: clipboardCut } = useClipboard()
 
 const { isEditMode } = useEditMode()
 
+// Keyboard navigation
+const {
+  highlightedCells,
+  isBlockSelectionActive,
+  config: keyboardConfig
+} = useKeyboardNavigation({
+  onTabSwitch: (tabIndex) => {
+    // Don't handle if modal is open or in edit mode
+    if (showBlockModal.value || showConfirmModal.value || showImportExportModal.value || showHelpModal.value) return
+    if (isEditMode.value) return
+
+    const tab = sortedTabs.value[tabIndex]
+    if (tab) {
+      store.setActiveTab(tab.id)
+      store.rememberActiveTab()
+    }
+  },
+  onCellSelect: async (row, col) => {
+    // Don't handle if modal is open or in edit mode
+    if (showBlockModal.value || showConfirmModal.value || showImportExportModal.value || showHelpModal.value) return
+    if (isEditMode.value) return
+
+    // Find block at position
+    const block = activeBlocks.value.find(b => b.position.row === row && b.position.col === col)
+    if (block) {
+      await store.rememberActiveTab()
+      window.location.href = block.url
+    }
+  },
+  getTabCount: () => sortedTabs.value.length
+})
+
 // Loading state for async init
 const isLoading = ref(true)
+
+// Focus state for keyboard hint
+const hasFocus = ref(false)
 
 // Block edit modal state
 const showBlockModal = ref(false)
@@ -73,6 +109,25 @@ const currentData = computed(() => ({
   trash: trash.value
 }))
 
+// Focus handlers for keyboard hint
+// On new tab page, focus starts in address bar, so we track if user interacted with the page
+function handlePageInteraction() {
+  hasFocus.value = true
+}
+
+function handleFocusIn(e) {
+  // Page received focus (e.g., via Tab key)
+  // Check if focus is on an element inside the page (not address bar)
+  if (e.target && e.target !== document && e.target !== document.body) {
+    hasFocus.value = true
+  }
+}
+
+function handleDocumentFocus() {
+  // Fallback: if document itself gets focus
+  hasFocus.value = true
+}
+
 onMounted(async () => {
   // Async init for extension store
   await store.init()
@@ -81,6 +136,11 @@ onMounted(async () => {
   // Ensure data is saved before page unload
   window.addEventListener('beforeunload', handleBeforeUnload)
   document.addEventListener('visibilitychange', handleVisibilityChange)
+
+  // Track if user has interacted with the page
+  document.addEventListener('click', handlePageInteraction)
+  document.addEventListener('focusin', handleFocusIn)
+  window.addEventListener('focus', handleDocumentFocus)
 })
 
 // Force save on page close/hide to prevent data loss from debounce
@@ -97,6 +157,9 @@ function handleVisibilityChange() {
 onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload)
   document.removeEventListener('visibilitychange', handleVisibilityChange)
+  document.removeEventListener('click', handlePageInteraction)
+  document.removeEventListener('focusin', handleFocusIn)
+  window.removeEventListener('focus', handleDocumentFocus)
 })
 
 function handleCellClick(position) {
@@ -333,6 +396,7 @@ function handleResetAll() {
                 :can-delete-tab="canDeleteTab"
                 :edit-mode="isEditMode"
                 :new-tab-id="newlyCreatedTabId"
+                :show-key-hints="keyboardConfig.showKeyHints && !isEditMode"
                 @select="handleTabSelect"
                 @create="handleTabCreate"
                 @update="handleTabUpdate"
@@ -348,6 +412,9 @@ function handleResetAll() {
               :blocks="activeBlocks"
               :tab-id="activeTab.id"
               :edit-mode="isEditMode"
+              :highlighted-cells="highlightedCells"
+              :show-key-hints="keyboardConfig.showKeyHints && !isEditMode"
+              :key-hint-opacity="keyboardConfig.keyHintOpacity"
               @cell-click="handleCellClick"
               @block-click="handleBlockClick"
               @move-to-buffer="handleMoveToBuffer"
@@ -433,6 +500,23 @@ function handleResetAll() {
           </div>
         </Transition>
       </Teleport>
+
+      <!-- Focus hint for keyboard navigation -->
+      <Teleport to="body">
+        <Transition name="hint">
+          <div
+            v-if="!hasFocus && !isEditMode"
+            class="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] px-5 py-2.5 rounded-lg
+                   bg-neon-cyan/10 ring-1 ring-neon-cyan/50
+                   text-sm text-neon-cyan cursor-pointer
+                   hover:bg-neon-cyan/20 hover:ring-neon-cyan transition-all
+                   shadow-lg shadow-neon-cyan/10"
+            @click="handlePageInteraction"
+          >
+            Кликните или нажмите Tab для активации клавиатуры
+          </div>
+        </Transition>
+      </Teleport>
     </template>
   </div>
 </template>
@@ -447,5 +531,16 @@ function handleResetAll() {
 .toast-leave-to {
   opacity: 0;
   transform: translate(-50%, 20px);
+}
+
+.hint-enter-active,
+.hint-leave-active {
+  transition: opacity 300ms ease-out, transform 300ms ease-out;
+}
+
+.hint-enter-from,
+.hint-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -10px);
 }
 </style>
